@@ -6,6 +6,7 @@ set(SRC_FILE
         main.cpp
         simple_test.cpp
         integer_test.cpp
+        prime_generator_test.cpp
 )
 
 enable_testing()
