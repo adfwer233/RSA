@@ -5,26 +5,38 @@
 template<typename IntegerType>
 struct PrimeGenerator {
 
+    static inline std::vector<uint32_t> small_primes = {};
+
     static IntegerType generate_random(const IntegerType& min, const IntegerType& max) {
         static std::random_device rd;
         static std::mt19937_64 gen(rd());
 
+        std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<size_t>::max());
+
         IntegerType range = max - min;
-        IntegerType result = min;
+        IntegerType result = min + (max - min) * dist(gen) / std::numeric_limits<uint64_t>::max();
 
-        // Generate the number in chunks
-        do {
-            result = min;
-            std::cout << result << std::endl;
-            for (size_t bits = msb(range) + 1; bits > 0;) {
-                size_t chunk_size = std::min<size_t>(bits, 64);
-                std::uniform_int_distribution<uint64_t> dist(0, (1ULL << chunk_size) - 1);
-                result = (result << chunk_size) | dist(gen);
-                bits -= chunk_size;
+        return 2 + dist(gen);
+    }
+
+    static std::vector<uint32_t> generate_primes(int count) {
+        // Approximate upper limit for the 1000th prime based on the prime number theorem
+        int limit = 10000;  // Increase if needed
+        std::vector<bool> is_prime(limit, true);
+        std::vector<uint32_t> primes;
+
+        // Start marking from the first prime, 2
+        for (int i = 2; i < limit && primes.size() < count; ++i) {
+            if (is_prime[i]) {
+                primes.push_back(i);  // Add i to list of primes
+                // Mark multiples of i as non-prime
+                for (int j = i * 2; j < limit; j += i) {
+                    is_prime[j] = false;
+                }
             }
-        } while (result > max);
+        }
 
-        return result;
+        return primes;
     }
 
     static bool pass_miller_rabin(const IntegerType& value, int iterations = 5) {
@@ -58,7 +70,6 @@ struct PrimeGenerator {
         // Perform the Miller-Rabin test with the specified number of iterations
         for (int i = 0; i < iterations; ++i) {
             IntegerType a = generate_random(2, value - 2);
-            std::cout << i << std::endl;
             IntegerType x = mod_exp(a, d, value);
 
             if (x == 1 || x == value - 1) continue;
@@ -106,6 +117,11 @@ struct PrimeGenerator {
             try_time = 2;
         }
 
+        for (auto p: small_primes) {
+            if (value % p == 0)
+                return false;
+        }
+
         return pass_miller_rabin(value, try_time);
     }
 
@@ -115,6 +131,9 @@ struct PrimeGenerator {
      * @return
      */
     static IntegerType get_prime(int bit_count) {
+        if (small_primes.empty())
+            small_primes = generate_primes(4096);
+
         std::string num_str = Random::generate_random_large_number(bit_count);
         IntegerType value(num_str);
 
@@ -122,9 +141,13 @@ struct PrimeGenerator {
             bit_set(value, 0);
         }
 
+        int try_num = 0;
         while(not is_prime(value)) {
+            try_num ++;
             value = value + 2;
+//            std::cout << try_num << std::endl;
         }
+
 
         return value;
     }

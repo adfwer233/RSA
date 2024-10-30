@@ -6,7 +6,13 @@
 using namespace boost::multiprecision;
 
 TEST(PrimeGeneratorTest, SimpleTest) {
-    // auto result = PrimeGenerator<cpp_int>::get_prime(100);
-    // std::cout << result << std::endl;
+     auto result = PrimeGenerator<cpp_int>::get_prime(1024);
+     std::cout << result << std::endl;
     // FAIL();
+}
+
+TEST(PrimeGeneratorTest, PrimeTableTest) {
+    auto result = PrimeGenerator<cpp_int>::generate_primes(1000);
+    std::cout << result.size() << std::endl;
+//     FAIL();
 }
