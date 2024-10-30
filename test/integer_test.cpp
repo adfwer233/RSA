@@ -62,6 +62,26 @@ TEST(IntegerTest, AddFuzzingTest) {
     }
 }
 
+TEST(IntegerTest, SubtractTest) {
+    for (int i = 0; i < 10; ++i) {
+        cpp_int num1(generate_random_large_number(50));
+        cpp_int num2(generate_random_large_number(50));
+
+        if (num1 < num2)
+            std::swap(num1, num2);
+
+        cpp_int sum = num1 - num2;
+
+        BigInt big1(num1.str());
+        BigInt big2(num2.str());
+
+        BigInt result = big1 - big2;
+
+        EXPECT_EQ(result.to_string(), sum.str());
+    }
+}
+
+
 TEST(IntegerTest, MultiplicationFuzzingTest) {
     for (int i = 0; i < 10; ++i) {
         cpp_int num1(generate_random_large_number(50));
@@ -75,5 +95,49 @@ TEST(IntegerTest, MultiplicationFuzzingTest) {
         BigInt result = big1 * big2;
 
         EXPECT_EQ(result.to_string(), sum.str());
+    }
+}
+
+TEST(IntegerTest, DivisionTest) {
+    for (int i = 0; i < 10; ++i) {
+        cpp_int num1(generate_random_large_number(100));
+        cpp_int num2(generate_random_large_number(50));
+
+        cpp_int sum = num1 / num2;
+
+        BigInt big1(num1.str());
+        BigInt big2(num2.str());
+
+        BigInt result = big1 / big2;
+
+        EXPECT_EQ(result.to_string(), sum.str());
+    }
+}
+
+TEST(IntegerTest, SpaceShipTest) {
+    for (int i = 0; i < 10; ++i) {
+        cpp_int num1(generate_random_large_number(50));
+        cpp_int num2(generate_random_large_number(50));
+
+        BigInt big1(num1.str());
+        BigInt big2(num2.str());
+
+        EXPECT_EQ(big1 < big2, num1 < num2);
+        EXPECT_EQ(big1 <= big2, num1 <= num2);
+        EXPECT_EQ(big1 > big2, num1 > num2);
+        EXPECT_EQ(big1 >= big2, num1 >= num2);
+    }
+
+    for (int i = 0; i < 10; ++i) {
+        cpp_int num1(generate_random_large_number(50));
+        cpp_int num2 = num1;
+
+        BigInt big1(num1.str());
+        BigInt big2(num2.str());
+
+        EXPECT_EQ(big1 < big2, num1 < num2);
+        EXPECT_EQ(big1 <= big2, num1 <= num2);
+        EXPECT_EQ(big1 > big2, num1 > num2);
+        EXPECT_EQ(big1 >= big2, num1 >= num2);
     }
 }

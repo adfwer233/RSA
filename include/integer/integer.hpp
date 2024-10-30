@@ -20,7 +20,7 @@ struct Integer {
         from_string(value);
     }
 
-    ~Integer() {}
+    ~Integer() = default;
 
     Integer(const Integer& other) : current_length(other.current_length) {
         alloc_data(current_length);
@@ -45,13 +45,26 @@ struct Integer {
         if (this != &other) {
             data = std::move(other.data);
             current_length = other.current_length;
-            other.data = nullptr;
             other.current_length = 0;
         }
         return *this;
     }
 
-    Integer operator+(const Integer& other) const {
+    auto operator <=> (const Integer& other) const {
+        if (current_length != other.current_length) {
+            return current_length <=> other.current_length;
+        }
+
+        for (int i = current_length - 1; i >= 0; i--) {
+            if (data[i] != other.data[i]) {
+                return data[i] <=> other.data[i];
+            }
+        }
+
+        return std::strong_ordering::equal;
+    }
+
+    Integer operator + (const Integer& other) const {
         Integer result;
 
         size_t n = std::max(current_length, other.current_length);
@@ -77,12 +90,49 @@ struct Integer {
         return result;
     }
 
-    Integer operator*(const Integer& other) const {
+    Integer operator - (const Integer& other) const {
+        Integer result;
+        result.alloc_data(current_length);
+        result.current_length = current_length;
+
+        int64_t borrow = 0;
+        for (size_t i = 0; i < current_length; ++i) {
+            int64_t subtrahend = (i < other.current_length ? other.data[i] : 0) + borrow;
+            int64_t difference = static_cast<int64_t>(data[i]) - subtrahend;
+
+            if (difference < 0) {
+                difference += radix();
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+
+            result.data[i] = static_cast<uint64_t>(difference);
+        }
+
+        // Remove any leading zeroes in the result
+        while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
+            result.current_length--;
+        }
+
+        return result;
+    }
+
+    Integer operator + (const uint64_t other) const {
+        return add_one_bit(other);
+    }
+
+    Integer operator * (const Integer& other) const {
         return long_multiplication(other);
     }
 
+    Integer operator * (const uint64_t other) const {
+        return multiply_one_bit(other);
+    }
+
     Integer operator / (const Integer& other) const {
-        return long_divide(other);
+        Integer reminder;
+        return long_division(other, reminder);
     }
 
     void from_int(int val) {
@@ -124,6 +174,50 @@ struct Integer {
     }
 
 private:
+    Integer add_one_bit(const uint64_t other) const {
+        Integer result;
+        size_t n = current_length + 1;
+        result.current_length = n;
+        result.alloc_data(n);
+
+        size_t carry = other;
+
+        for (int i = 0; i <current_length; i++) {
+            uint64_t sum = data[i] + carry;
+            carry = sum / radix();
+            result.data[i] = sum % radix();
+        }
+
+        result.data[n - 1] = carry;
+
+        while (result.current_length > 1 and result.data[result.current_length - 1] == 0)
+            result.current_length --;
+
+        return result;
+    }
+
+    Integer multiply_one_bit(const uint64_t other) const {
+        Integer result;
+        size_t n = current_length + 1;
+        result.current_length = n;
+        result.alloc_data(n);
+
+        size_t carry = 0;
+
+        for (int i = 0; i <current_length; i++) {
+            uint64_t prod = data[i] * other + carry;
+            carry = prod / radix();
+            result.data[i] = prod % radix();
+        }
+
+        result.data[n - 1] = carry;
+
+        while (result.current_length > 1 and result.data[result.current_length - 1] == 0)
+            result.current_length --;
+
+        return result;
+    }
+
     Integer long_multiplication(const Integer& other) const {
         Integer result;
 
@@ -153,9 +247,57 @@ private:
         return result;
     }
 
+    Integer long_division(const Integer& divisor, Integer& remainder) const {
+        if (divisor.current_length == 1 && divisor.data[0] == 0) {
+            throw std::invalid_argument("Division by zero");
+        }
+
+        Integer quotient;
+        quotient.alloc_data(current_length);  // Maximum possible length for quotient
+        quotient.current_length = current_length;
+
+        remainder = Integer();  // Initialize remainder as zero
+        remainder.alloc_data(current_length);
+        remainder.current_length = 0;
+
+        // Traverse from the most significant chunk to the least significant chunk of `*this`
+        for (int i = static_cast<int>(current_length) - 1; i >= 0; --i) {
+            // Shift remainder by one base unit and add the next chunk of `data`
+            remainder = remainder * radix() + data[i];
+
+            // Determine how many times divisor fits into remainder (trial division)
+            uint64_t left = 0, right = radix() - 1, quotient_chunk = 0;
+            while (left <= right) {
+                uint64_t mid = (left + right) / 2;
+                Integer candidate = divisor * mid;
+                if (candidate <= remainder) {
+                    quotient_chunk = mid;
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
+            }
+
+            if (quotient_chunk != 0) {
+                int x = 0;
+            }
+
+            // Set quotient at this position and subtract the matched amount from remainder
+            quotient.data[i] = quotient_chunk;
+            remainder = remainder - divisor * quotient_chunk;
+        }
+
+        while (quotient.current_length > 1 && quotient.data[quotient.current_length - 1] == 0) {
+            quotient.current_length--;
+        }
+
+        return quotient;
+    }
+
     void alloc_data(int len) {
         data.clear();
         data.reserve(len * 2);
+        data.resize(len * 2);
 
         for (int i = 0; i < len; i++) {
             data[i] = 0;
