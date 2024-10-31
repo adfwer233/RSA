@@ -191,6 +191,54 @@ TEST(IntegerTest, DivisionTest) {
     }
 }
 
+TEST(IntegerTest, ModTest) {
+    for (int i = 0; i < 10; ++i) {
+        std::string rd1 = generate_random_large_number(1000);
+        std::string rd2 = generate_random_large_number(500);
+        cpp_int num1(convert_hex_to_dec(rd1));
+        cpp_int num2(convert_hex_to_dec(rd2));
+
+        cpp_int sum = num1 % num2;
+
+        BigInt big1(rd1);
+        BigInt big2(rd2);
+
+        BigInt result = big1 % big2;
+
+        EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+    }
+}
+
+TEST(IntegerTest, ShiftTest) {
+    for (int i = 0; i < 10; ++i) {
+        std::string rd1 = generate_random_large_number(1000);
+        cpp_int num1(convert_hex_to_dec(rd1));
+
+        cpp_int sum = num1 >>= 1;
+
+        BigInt big1(rd1);
+
+        BigInt result = big1 >>= 1;
+
+        EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+    }
+}
+
+TEST(IntegerTest, SingleMinusTest) {
+    for (int i = 0; i < 10; ++i) {
+        std::string rd1 = generate_random_large_number(1000);
+        cpp_int num1(convert_hex_to_dec(rd1));
+
+        cpp_int sum = num1 - 1;
+
+        BigInt big1(rd1);
+
+        BigInt result = big1 - 1;
+
+        EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+    }
+}
+
 TEST(IntegerTest, SpaceShipTest) {
     for (int i = 0; i < 10; ++i) {
         std::string rd1 = generate_random_large_number(50);

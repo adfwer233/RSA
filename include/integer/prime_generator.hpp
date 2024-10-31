@@ -2,19 +2,32 @@
 
 #include "random.hpp"
 
+#include "integer/integer.hpp"
+
+inline int msb(const BigInt& value) {
+    return value.msb();
+}
+
+inline int bit_test(const BigInt& value, size_t b) {
+    return value.bit_test(b);
+}
+
+inline void bit_set(BigInt& value, size_t b) {
+    return value.bit_set(b);
+}
+
 template<typename IntegerType>
 struct PrimeGenerator {
 
+
+
     static inline std::vector<uint32_t> small_primes = {};
 
-    static IntegerType generate_random(const IntegerType& min, const IntegerType& max) {
+    static int generate_random() {
         static std::random_device rd;
         static std::mt19937_64 gen(rd());
 
-        std::uniform_int_distribution<uint64_t> dist(0, 32768);
-
-//        IntegerType range = max - min;
-//        IntegerType result = min + (max - min) * dist(gen) / std::numeric_limits<uint64_t>::max();
+        std::uniform_int_distribution<int> dist(0, 32768);
 
         return 2 + dist(gen);
     }
@@ -38,6 +51,21 @@ struct PrimeGenerator {
         return primes;
     }
 
+    static auto mod_exp(IntegerType base, IntegerType exponent, const IntegerType& mod) -> IntegerType {
+        IntegerType result{1};
+        base = base % mod;
+        while (exponent > 0) {
+            if (bit_test(exponent, 0)) {
+                result = (result * base) % mod;
+            }
+            exponent >>= 1;
+
+            base = (base * base) % mod;
+        }
+
+        return result;
+    };
+
     static bool pass_miller_rabin(const IntegerType& value, int iterations = 5) {
         if (value < 2) return false;
         if (value == 2 || value == 3) return true;
@@ -52,30 +80,16 @@ struct PrimeGenerator {
             ++s;
         }
 
-        // Helper lambda to perform modular exponentiation
-        auto mod_exp = [](IntegerType base, IntegerType exponent, const IntegerType& mod) -> IntegerType {
-            IntegerType result = 1;
-            base %= mod;
-            while (exponent > 0) {
-                if (bit_test(exponent, 0)) {
-                    result = (result * base) % mod;
-                }
-                exponent >>= 1;
-                base = (base * base) % mod;
-            }
-            return result;
-        };
-
         // Perform the Miller-Rabin test with the specified number of iterations
         for (int i = 0; i < iterations; ++i) {
-            IntegerType a = generate_random(2, value - 2);
+            IntegerType a{generate_random()};
             IntegerType x = mod_exp(a, d, value);
 
             if (x == 1 || x == value - 1) continue;
 
             bool found = false;
             for (int r = 1; r < s; ++r) {
-                x = mod_exp(x, 2, value);  // Square x mod value
+                x = (x * x) % value;  // Square x mod value
                 if (x == value - 1) {
                     found = true;
                     break;
