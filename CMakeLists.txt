@@ -2,9 +2,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(RSA)
 
-set(ENV{http_proxy} "http://127.0.0.1:10989")
-set(ENV{https_proxy} "http://127.0.0.1:10989")
-
 enable_testing()
 
 # Set C++ standard

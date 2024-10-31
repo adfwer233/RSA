@@ -78,8 +78,8 @@ struct Integer {
             size_t a = i < current_length ? data[i] : 0;
             size_t b = i < other.current_length ? other.data[i]: 0;
             size_t sum = a + b + carry;
-            result.data[i] = sum % radix();
-            carry = sum / radix();
+            result.data[i] = sum & 0xFFFFFFFF;
+            carry = sum >> bit;
         }
 
         result.current_length = n;
@@ -125,7 +125,7 @@ struct Integer {
     }
 
     Integer operator * (const Integer& other) const {
-        return long_multiplication(other);
+        return karatsuba_multiplication(other);
     }
 
     Integer operator * (const uint64_t other) const {
@@ -191,8 +191,8 @@ private:
 
         for (int i = 0; i <current_length; i++) {
             uint64_t sum = data[i] + carry;
-            carry = sum / radix();
-            result.data[i] = sum % radix();
+            carry = sum >> bit;
+            result.data[i] = sum & 0xFFFFFFFF;
         }
 
         result.data[n - 1] = carry;
@@ -228,22 +228,27 @@ private:
     Integer long_multiplication(const Integer& other) const {
         Integer result;
 
-        size_t n = current_length * other.current_length;
+        size_t n = current_length + other.current_length;
         result.current_length = current_length + other.current_length;
         result.alloc_data(n);
-
         size_t carry = 0;
 
-        for (int i = 0; i < n; i++) {
-            result.data[i] = 0;
-        }
+        for (size_t j = 0; j < other.current_length; j++) {
+            for (int i = 0; i < current_length ; i += 2) {
+                uint64_t prod = other.data[j] * data[i] + result.data[i + j] + carry;
+                carry = prod >> bit;
+                result.data[i + j] = prod & 0xFFFFFFFF; // @todo: only works when bit = 32
 
-        for (int i = 0; i < current_length; i++) {
-            for (size_t j = 0; j < other.current_length || carry > 0; ++j) {
-                uint64_t b = (j < other.current_length) ? other.data[j] : 0;
-                uint64_t prod = data[i] * b + result.data[i + j] + carry;
-                carry = prod / radix();
-                result.data[i + j] = prod % radix();
+                if (i + 1 < current_length) {
+                    uint64_t prod2 = other.data[j] * data[i + 1] + result.data[i + j + 1] + carry;
+                    carry = (prod2 >> 32);
+                    result.data[i + j + 1] = prod2 & 0xFFFFFFFF;
+                }
+            }
+            if (carry > 0) {
+                uint64_t sum = result.data[current_length + j] + carry;
+                result.data[current_length + j] = sum & 0xFFFFFFFF;
+                carry = sum >> bit;
             }
         }
 
@@ -253,6 +258,69 @@ private:
 
         return result;
     }
+
+    Integer left_shift_chunk(size_t chunk_count) const {
+        Integer result;
+        result.alloc_data(chunk_count + current_length);
+        result.current_length = current_length + chunk_count;
+
+        for (int i = 0; i < chunk_count; i++) result.data[i] = 0;
+
+        std::copy(data.begin(), data.begin() + current_length, result.data.begin() + chunk_count);
+        return result;
+    }
+
+    Integer karatsuba_multiplication(const Integer& other) const {
+        // Base case: use long multiplication for small numbers
+        if (current_length <= 256 || other.current_length <= 256) {
+            return long_multiplication(other);
+        }
+
+        size_t n = std::max(current_length, other.current_length);
+        size_t half = (n + 1) / 2;
+
+        bool res = *this < other;
+
+        const Integer & v1 = res ? other: *this;
+        const Integer & v2 = res ? *this: other;
+
+        // Split `this` into high and low parts
+        Integer low1, high1;
+        low1.data = std::vector<uint64_t>(v1.data.begin(), v1.data.begin() + half);
+        high1.data = std::vector<uint64_t>(v1.data.begin() + half, v1.data.begin() + v1.current_length);
+        low1.current_length = half;
+        high1.current_length = v1.current_length - half;
+
+        Integer result;
+        if (v2.current_length <= half) {
+            Integer z0 = std::move(high1.karatsuba_multiplication(v2));
+            Integer z1 = std::move(low1.karatsuba_multiplication(v2));
+
+            result = std::move(z0.left_shift_chunk(half) + z1);
+        } else {
+            // Split `other` into high and low parts
+            Integer low2, high2;
+            low2.data = std::vector<uint64_t>(v2.data.begin(), v2.data.begin() + half);
+            high2.data = std::vector<uint64_t>(v2.data.begin() + half, v2.data.begin() + v2.current_length);
+            low2.current_length = low2.data.size();
+            high2.current_length = high2.data.size();
+
+            // Recursively calculate three products
+            Integer z0 = std::move(low1.karatsuba_multiplication(low2));
+            Integer z2 = std::move(high1.karatsuba_multiplication(high2));
+            Integer z1 = std::move((low1 + high1).karatsuba_multiplication(low2 + high2) - z0 - z2);
+            result = std::move(z0 + z1.left_shift_chunk(half) + z2.left_shift_chunk(half * 2));
+        }
+
+        // Update result length
+        result.current_length = current_length + other.current_length;
+        while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
+            --result.current_length;
+        }
+
+        return result;
+    }
+
 
     Integer long_division(const Integer& divisor, Integer& remainder) const {
         if (divisor.current_length == 1 && divisor.data[0] == 0) {
@@ -303,8 +371,8 @@ private:
 
     void alloc_data(int len) {
         data.clear();
-        data.reserve(len * 2);
-        data.resize(len * 2);
+        data.reserve(len +10);
+        data.resize(len+10);
 
         for (int i = 0; i < len; i++) {
             data[i] = 0;

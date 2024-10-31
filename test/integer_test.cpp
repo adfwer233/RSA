@@ -152,7 +152,7 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         cpp_int num2(convert_hex_to_dec(rd2));
 
         auto boost_start = std::chrono::steady_clock::now();
-        cpp_int sum = num1 * num2;
+        cpp_int sum = num1 / num2;
         auto boost_end = std::chrono::steady_clock::now();
 
         double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
@@ -162,7 +162,7 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         BigInt big2(rd2);
 
         auto our_start = std::chrono::steady_clock::now();
-        BigInt result = big1 * big2;
+        BigInt result = big1 / big2;
         auto our_end = std::chrono::steady_clock::now();
 
         our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();
