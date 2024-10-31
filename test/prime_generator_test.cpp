@@ -6,8 +6,9 @@
 using namespace boost::multiprecision;
 
 TEST(PrimeGeneratorTest, SimpleTest) {
-     auto result = PrimeGenerator<cpp_int>::get_prime(1024);
-     std::cout << result << std::endl;
+    // apprximated 1000 bits
+    auto result = PrimeGenerator<cpp_int>::get_prime(300);
+    std::cout << result << std::endl;
     // FAIL();
 }
 

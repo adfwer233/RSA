@@ -11,17 +11,16 @@ struct PrimeGenerator {
         static std::random_device rd;
         static std::mt19937_64 gen(rd());
 
-        std::uniform_int_distribution<uint64_t> dist(0, std::numeric_limits<size_t>::max());
+        std::uniform_int_distribution<uint64_t> dist(0, 32768);
 
-        IntegerType range = max - min;
-        IntegerType result = min + (max - min) * dist(gen) / std::numeric_limits<uint64_t>::max();
+//        IntegerType range = max - min;
+//        IntegerType result = min + (max - min) * dist(gen) / std::numeric_limits<uint64_t>::max();
 
         return 2 + dist(gen);
     }
 
     static std::vector<uint32_t> generate_primes(int count) {
-        // Approximate upper limit for the 1000th prime based on the prime number theorem
-        int limit = 10000;  // Increase if needed
+        int limit = 50000;  // Increase if needed
         std::vector<bool> is_prime(limit, true);
         std::vector<uint32_t> primes;
 
@@ -134,8 +133,12 @@ struct PrimeGenerator {
         if (small_primes.empty())
             small_primes = generate_primes(4096);
 
+        std::cout << small_primes.size() << std::endl;
+
         std::string num_str = Random::generate_random_large_number(bit_count);
         IntegerType value(num_str);
+
+        std::cout << msb(value) << std::endl;
 
         if (not bit_test(value, 0)) {
             bit_set(value, 0);
@@ -145,9 +148,7 @@ struct PrimeGenerator {
         while(not is_prime(value)) {
             try_num ++;
             value = value + 2;
-//            std::cout << try_num << std::endl;
         }
-
 
         return value;
     }

@@ -7,8 +7,10 @@
 
 /**
  * @brief large integer data structure
+ *
+ * @tparam bit should be times of 4
  */
-template<int bit = 8>
+template<int bit = 32>
 struct Integer {
     explicit Integer() = default;
 
@@ -141,34 +143,39 @@ struct Integer {
         data[0] = static_cast<uint64_t>(val);
     }
 
+    /**
+     * value should in hex type, with 0x prefix
+     * @param value
+     */
     void from_string(const std::string_view value) {
         current_length = 0;
 
-        size_t len = (value.length() + bit - 1) / bit;
+        auto value_no_prefix = value.substr(2, value.length() - 2);
+
+        size_t tmp = value_no_prefix.length() * 4;
+        size_t len = (value_no_prefix.length() * 4 + bit - 1) / bit;
         alloc_data(len);
 
-        for (int i = static_cast<int>(value.size()); i > 0; i -= bit) {
-            int start = std::max(0, i - bit);
+        for (int i = static_cast<int>(value_no_prefix.size()); i > 0; i -= bit / 4) {
+            int start = std::max(0, i - bit / 4);
             int length = i - start;
-            std::string part = std::string(value.substr(start, length));
+            std::string part = std::string(value_no_prefix.substr(start, length));
 
-            data[current_length++] = std::stoull(part);
+            data[current_length++] = std::stoull(part, nullptr, 16);
         }
-    }
-
-    size_t get_bit_length() const {
-        return bit;
     }
 
     [[nodiscard]] std::string to_string() const {
         std::stringstream ss;
+
+        ss << "0x";
+
         for (int i = current_length - 1; i >= 0; i--) {
             if (i == current_length - 1) {
-                ss << data[i];
+                ss << std::hex << data[i];
             } else {
-                ss << std::setw(bit) << std::setfill('0') << data[i];
+                ss << std::setw(bit / 4) << std::hex << std::setfill('0') << data[i];
             }
-            // std::cout << data[i] << std::endl;
         }
         return ss.str();
     }
@@ -305,11 +312,11 @@ private:
     }
 
     [[nodiscard]] constexpr size_t radix() const {
-        return std::pow(10, bit);
+        return std::pow(2, bit);
     }
 
     std::vector<uint64_t> data;
     size_t current_length = 0;
 };
 
-using BigInt = Integer<8>;
+using BigInt = Integer<32>;
