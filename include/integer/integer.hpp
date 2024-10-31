@@ -134,7 +134,7 @@ struct Integer {
 
     Integer operator / (const Integer& other) const {
         Integer reminder;
-        return long_division(other, reminder);
+        return knuth_division(other, reminder);
     }
 
     void from_int(int val) {
@@ -259,6 +259,10 @@ private:
         return result;
     }
 
+    void remove_leading_zero() {
+        while(data[current_length - 1] == 0) current_length --;
+    }
+
     Integer left_shift_chunk(size_t chunk_count) const {
         Integer result;
         result.alloc_data(chunk_count + current_length);
@@ -267,6 +271,15 @@ private:
         for (int i = 0; i < chunk_count; i++) result.data[i] = 0;
 
         std::copy(data.begin(), data.begin() + current_length, result.data.begin() + chunk_count);
+        return result;
+    }
+
+    Integer get_chunks(size_t start, size_t length) const {
+        Integer result;
+        result.alloc_data(length);
+        result.current_length = length;
+
+        std::copy(data.begin() + start, data.begin() + start + length, result.data.begin());
         return result;
     }
 
@@ -321,6 +334,77 @@ private:
         return result;
     }
 
+    Integer knuth_division(const Integer& t_divisor, Integer& t_reminder) const {
+        Integer dividend = *this;
+        Integer divisor = t_divisor;
+        uint64_t v = radix() / (divisor.data[divisor.current_length - 1] + 1);
+        dividend = dividend * v;
+        divisor = divisor * v;
+
+        Integer backup_dividend = dividend;
+
+        int n = dividend.current_length;
+        int m = divisor.current_length;
+
+        uint64_t highest  = divisor.data[divisor.current_length - 1];
+
+        Integer result;
+        result.alloc_data(n - m);
+
+        if (highest * 2 < radix()) {
+            std::cout << "wrong" << std::endl;
+        }
+
+        int k = 0;
+        for (int i = n - m - 1; i >= 0; i--) {
+            Integer current_part = dividend.get_chunks(i, 1 + m);
+
+            // quotient estimation
+            long long q = (current_part.data[m] * radix() + current_part.data[m - 1]) / highest - 2;
+
+            q = std::max(q, 1ll);
+
+            // remove leading zeros
+            current_part.remove_leading_zero();
+            Integer tmp;
+
+            if (q < radix()) {
+                tmp = divisor * q;
+            } else {
+                uint64_t q_low = q % radix();
+                uint64_t q_high = q / radix();
+
+                tmp = divisor * q_low + divisor.left_shift_chunk(1) * q_high;
+            }
+
+            Integer reminder = current_part - tmp;
+            reminder.remove_leading_zero();
+
+            int t = 0;
+            while (reminder >= divisor) {
+                q++;
+                t++;
+                if (t > 3) {
+                    std::cout << t << std::endl;
+                }
+                reminder = reminder - divisor;
+            }
+
+            std::copy(reminder.data.begin(), reminder.data.begin() + reminder.current_length, dividend.data.begin() + i);
+
+            for (size_t j = i + reminder.current_length; j < i + m + 1; j++) dividend.data[j] = 0;
+
+            result.data[i] = q % radix();
+            result.data[i + 1] += q >> bit;
+
+            k++;
+        }
+
+        result.current_length = n - m + 1;
+        while(result.data[result.current_length - 1] == 0) result.current_length--;
+
+        return result;
+    }
 
     Integer long_division(const Integer& divisor, Integer& remainder) const {
         if (divisor.current_length == 1 && divisor.data[0] == 0) {
