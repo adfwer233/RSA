@@ -85,7 +85,7 @@ struct PrimeGenerator {
             IntegerType a{generate_random()};
             IntegerType x = mod_exp(a, d, value);
 
-            if (x == 1 || x == value - 1) continue;
+            if (x == 1 || x == d) continue;
 
             bool found = false;
             for (int r = 1; r < s; ++r) {
@@ -145,11 +145,15 @@ struct PrimeGenerator {
      */
     static IntegerType get_prime(int bit_count) {
         if (small_primes.empty())
-            small_primes = generate_primes(4096);
+            small_primes = generate_primes(1024);
 
         std::cout << small_primes.size() << std::endl;
 
-        std::string num_str = Random::generate_random_large_number(bit_count);
+        std::string num_str = Random::generate_random_large_number<Random::DigitFormat::hex>(bit_count);
+
+        std::cout << num_str << std::endl;
+        std::cout << num_str.size() << std::endl;
+
         IntegerType value(num_str);
 
         std::cout << msb(value) << std::endl;

@@ -18,6 +18,10 @@ struct Integer {
         from_int(val);
     }
 
+    explicit Integer(uint64_t val) {
+        from_single(val);
+    }
+
     explicit Integer(const std::string_view value) {
         from_string(value);
     }
@@ -185,17 +189,18 @@ struct Integer {
         return reminder;
     }
 
-    Integer operator % (int other) const {
-        Integer reminder;
-        Integer divisor;
-        divisor.alloc_data(1);
-        divisor.current_length = 1;
-        divisor.data[0] = other;
-        knuth_division(divisor, reminder);
+    uint64_t operator % (int other) const {
+        uint64_t reminder;
+        divide_one_bit(other, reminder);
         return reminder;
     }
 
     bool operator == (const int other) const {
+        if (current_length != 1) return false;
+        return data[0] == other;
+    }
+
+    bool operator == (const uint64_t other) const {
         if (current_length != 1) return false;
         return data[0] == other;
     }
@@ -233,7 +238,7 @@ struct Integer {
     }
 
     int msb() const {
-        return (current_length - 1) * 4 + high_bit<uint64_t>(data[current_length - 1]);
+        return (current_length - 1) * bit + high_bit<uint64_t>(data[current_length - 1]);
     }
 
     [[nodiscard]] int bit_test(size_t b) const {
@@ -273,6 +278,12 @@ struct Integer {
         current_length = 1;
         alloc_data(current_length);
         data[0] = static_cast<uint64_t>(val);
+    }
+
+    void from_single(uint64_t val) {
+        current_length = 1;
+        alloc_data(current_length);
+        data[0] = val;
     }
 
     /**
@@ -355,6 +366,31 @@ struct Integer {
             result.current_length --;
 
         return result;
+    }
+
+    Integer divide_one_bit(const uint64_t divisor, uint64_t& reminder) const {
+        if (divisor > radix())
+            throw std::runtime_error("divisor too large, use Integer");
+
+        int n = current_length;
+        Integer result;
+        result.alloc_data(n);
+        result.current_length = n;
+
+        uint64_t cur_reminder = 0;
+        for (int i = n - 1; i >= 0; i--) {
+            cur_reminder = (cur_reminder << bit) + data[i];
+
+            uint64_t quotient = cur_reminder / divisor;
+            cur_reminder -= quotient * divisor;
+
+            result.data[i] = quotient & 0xFFFFFFFF;
+            result.data[i + 1] += quotient >> bit;
+        }
+
+        result.remove_leading_zero();
+        reminder = cur_reminder;
+        return std::move(result);
     }
 
     Integer long_multiplication(const Integer& other) const {
@@ -533,7 +569,7 @@ struct Integer {
                 q++;
                 t++;
                 if (t > 3) {
-                    std::cout << t << std::endl;
+                    throw std::runtime_error("knuth division failed");
                 }
                 reminder = reminder - divisor;
             }
@@ -604,17 +640,8 @@ struct Integer {
     }
 
     void alloc_data(int len) {
-        data.clear();
-        data.reserve(len +10);
-        data.resize(len+10);
-
-        if (len + 10 > 4096 || len + 10 <= 0) {
-            std::cout << "test" << std::endl;
-        }
-
-        for (int i = 0; i < len; i++) {
-            data[i] = 0;
-        }
+        data.resize(len + 2);
+        std::fill(data.begin(), data.begin() + len, 0);
     }
 
     [[nodiscard]] constexpr size_t radix() const {

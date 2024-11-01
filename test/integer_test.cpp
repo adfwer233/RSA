@@ -152,7 +152,7 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         cpp_int num2(convert_hex_to_dec(rd2));
 
         auto boost_start = std::chrono::steady_clock::now();
-        cpp_int sum = num1 / num2;
+        cpp_int sum = num1 * num2;
         auto boost_end = std::chrono::steady_clock::now();
 
         double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
@@ -162,7 +162,91 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         BigInt big2(rd2);
 
         auto our_start = std::chrono::steady_clock::now();
-        BigInt result = big1 / big2;
+        BigInt result = big1 * big2;
+        auto our_end = std::chrono::steady_clock::now();
+
+        our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();
+
+        EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+    }
+
+    std::cout << boost_sum << std::endl << our_sum << std::endl;
+}
+
+inline int bit_test(const BigInt& value, size_t b) {
+    return value.bit_test(b);
+}
+
+template<typename IntegerType>
+auto mod_exp(IntegerType base, IntegerType exponent, const IntegerType& mod) -> IntegerType {
+    IntegerType result{1};
+    base = base % mod;
+    while (exponent > 0) {
+        if (bit_test(exponent, 0)) {
+            result = (result * base) % mod;
+        }
+        exponent >>= 1;
+
+        base = (base * base) % mod;
+    }
+
+    return result;
+};
+
+TEST(IntegerTest, SingleOperationBenchmark) {
+    double boost_sum = 0;
+    double our_sum = 0;
+
+    for (int i = 0; i < 10; ++i) {
+        std::string rd1 = generate_random_large_number(30);
+        cpp_int num1(convert_hex_to_dec(rd1));
+
+        auto boost_start = std::chrono::steady_clock::now();
+        cpp_int sum = num1 % 12345;
+        auto boost_end = std::chrono::steady_clock::now();
+
+        double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
+        boost_sum += duration_boost;
+
+        BigInt big1(rd1);
+
+        std::cout << "start" << std::endl;
+
+        auto our_start = std::chrono::steady_clock::now();
+        auto result = big1 % 12345;
+        auto our_end = std::chrono::steady_clock::now();
+        std::cout << "finish" << std::endl;
+
+        our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();
+
+        EXPECT_EQ(convert_hex_to_dec(BigInt(result).to_string()), sum.str());
+    }
+
+    std::cout << boost_sum << std::endl << our_sum << std::endl;
+}
+
+TEST(IntegerTest, ModExpBenchmark) {
+    double boost_sum = 0;
+    double our_sum = 0;
+
+    for (int i = 0; i < 10; ++i) {
+        std::string rd1 = generate_random_large_number(300);
+        std::string rd2 = generate_random_large_number(300);
+        cpp_int num1(convert_hex_to_dec(rd1));
+        cpp_int num2(convert_hex_to_dec(rd2));
+
+        auto boost_start = std::chrono::steady_clock::now();
+        cpp_int sum = mod_exp(cpp_int{12345}, num1, num2);
+        auto boost_end = std::chrono::steady_clock::now();
+
+        double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
+        boost_sum += duration_boost;
+
+        BigInt big1(rd1);
+        BigInt big2(rd2);
+
+        auto our_start = std::chrono::steady_clock::now();
+        auto result = mod_exp(BigInt {12345}, big1, big2);
         auto our_end = std::chrono::steady_clock::now();
 
         our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();

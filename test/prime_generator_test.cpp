@@ -8,8 +8,8 @@
 using namespace boost::multiprecision;
 
 TEST(PrimeGeneratorTest, SimpleTest) {
-    // apprximated 1000 bits
-    auto result = PrimeGenerator<BigInt>::get_prime(300);
+    // 768 / 4 bits
+    auto result = PrimeGenerator<BigInt>::get_prime(192);
     std::cout << result.to_string() << std::endl;
     // FAIL();
 }
