@@ -235,6 +235,12 @@ TEST(IntegerTest, ModExpBenchmark) {
         cpp_int num1(convert_hex_to_dec(rd1));
         cpp_int num2(convert_hex_to_dec(rd2));
 
+        bool flag = false;
+        if (not bit_test(num2, 0)) {
+            bit_set(num2, 0);
+            flag =true;
+        }
+
         auto boost_start = std::chrono::steady_clock::now();
         cpp_int sum = mod_exp(cpp_int{12345}, num1, num2);
         auto boost_end = std::chrono::steady_clock::now();
@@ -245,8 +251,12 @@ TEST(IntegerTest, ModExpBenchmark) {
         BigInt big1(rd1);
         BigInt big2(rd2);
 
+        if (flag) {
+            big2 = big2 +1;
+        }
+
         auto our_start = std::chrono::steady_clock::now();
-        auto result = mod_exp(BigInt {12345}, big1, big2);
+        auto result = BigInt::fast_odd_exp_mod(BigInt{12345}, big1, big2);
         auto our_end = std::chrono::steady_clock::now();
 
         our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();

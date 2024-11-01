@@ -81,7 +81,12 @@ struct PrimeGenerator {
         // Perform the Miller-Rabin test with the specified number of iterations
         for (int i = 0; i < iterations; ++i) {
             IntegerType a{generate_random()};
-            IntegerType x = mod_exp(a, d, value);
+            IntegerType x;
+            if constexpr (std::is_same_v<IntegerType, BigInt>) {
+                x = BigInt::fast_odd_exp_mod(a, d, value);
+            } else {
+                x = mod_exp(a, d, value);
+            }
 
             if (x == 1 || x == d) continue;
 

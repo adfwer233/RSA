@@ -335,7 +335,32 @@ struct Integer {
         return ss.str();
     }
 
-//private:
+    static Integer fast_odd_exp_mod(const Integer& base, const Integer& exp, const Integer& mod) {
+        if (not mod.bit_test(0)) {
+            throw std::runtime_error("this only for computing exponential of odd numbers");
+        }
+
+        uint64_t r = mod.current_length * bit;
+        Integer R = Integer{1}.left_shift_chunk(mod.current_length);
+        Integer mod_inverse = mod.inverse_mod_2_pow(r);
+
+        Integer result = montgomery_transformation(Integer(1), mod, r);
+        Integer a = montgomery_transformation(base, mod, r);
+
+        Integer exp_prime = exp;
+
+        while (exp_prime > 0) {
+            if (exp_prime.bit_test(0)) {
+                result = montgomery_multiplication(result, a, mod, mod_inverse, R, r);
+            }
+            exp_prime >>= 1;
+            a = montgomery_multiplication(a, a, mod, mod_inverse, R, r);
+        }
+
+        return montgomery_reduce(result, R, r, mod, mod_inverse);
+    }
+
+    //private:
     Integer add_one_bit(const uint64_t other) const {
         Integer result;
         size_t n = current_length + 1;
@@ -471,6 +496,61 @@ struct Integer {
 
         std::copy(data.begin(), data.begin() + current_length, result.data.begin() + chunk_count);
         return result;
+    }
+
+    Integer right_shift_chunk(size_t chunk_count) const {
+        return get_chunks(chunk_count, current_length - chunk_count);
+    }
+
+    Integer mod_2_pow(size_t k) const {
+        if (k % bit != 0) {
+            throw std::runtime_error("only support module 2 ^ {n * bit} for efficiency");
+        }
+        int chunks = k / bit;
+        Integer result;
+        result.alloc_data(chunks);
+        std::copy(data.begin(), data.begin() + chunks, result.data.begin());
+        result.current_length = chunks;
+        return result;
+    }
+
+    /**
+     * @brief compute the inverse of *this w.r.t. 2^k, and *this should be odd
+     * @param k
+     * @return
+     */
+    Integer inverse_mod_2_pow(size_t k) const {
+        Integer result{1};
+        Integer base = *this;
+        for (int i = 0; i < k - 1; i ++) {
+            result = (result * base).mod_2_pow(k);
+            Integer tmp = (base * base).mod_2_pow(k);
+            if (tmp.data[0] == 0) {
+                int t = 0;
+            }
+            base = tmp;
+        }
+        return result;
+    }
+
+    static Integer montgomery_multiplication(const Integer& a, const Integer& b, const Integer& mod, const Integer& mod_inverse, const Integer& R, uint64_t r) {
+        Integer c = a * b;
+        return montgomery_reduce(c, R, r, mod, mod_inverse);
+    }
+
+    static Integer montgomery_reduce(const Integer& x, const Integer& R, uint64_t r, const Integer& mod, const Integer& mod_inverse) {
+        Integer q = (x.mod_2_pow(r) * (R - mod_inverse)).mod_2_pow(r);
+        Integer a = x + q * mod;
+        a = a.right_shift_chunk(r / bit);
+        if (a >= mod) {
+            a = a - mod;
+        }
+        return a;
+    }
+
+    static Integer montgomery_transformation(const Integer& x, const Integer& mod, uint64_t r) {
+        Integer x_re = x.left_shift_chunk(r / bit);
+        return x_re % mod;
     }
 
     Integer get_chunks(size_t start, size_t length) const {
