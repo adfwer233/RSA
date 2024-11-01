@@ -231,14 +231,26 @@ struct Integer {
         return *this;
     }
 
-    template <typename T> int high_bit(T x) const
-    {
-        using UT = std::make_unsigned_t<T>;
-        return std::numeric_limits<UT>::digits - std::countl_zero(UT(x)) - 1;
+    template <typename T> int high_bit(T x) const {
+        auto ux = std::make_unsigned_t<T>(x);
+        int lb = -1, rb = std::numeric_limits<decltype(ux)>::digits;
+        while (lb + 1 < rb)
+        {
+            int mid = (lb + rb) / 2;
+            if (ux >> mid)
+            {
+                lb = mid;
+            }
+            else
+            {
+                rb = mid;
+            }
+        }
+        return lb;
     }
 
-    int msb() const {
-        return (current_length - 1) * bit + high_bit<uint64_t>(data[current_length - 1]);
+    [[nodiscard]] int msb() const {
+        return (current_length - 1) * bit + high_bit(data[current_length - 1]) + 1;
     }
 
     [[nodiscard]] int bit_test(size_t b) const {

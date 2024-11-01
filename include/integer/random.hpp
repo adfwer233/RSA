@@ -18,7 +18,7 @@ struct Random {
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> dist(0, 15); // Range for hex characters
-        std::uniform_int_distribution<int> dist_non_zero(1, 15); // Range for hex characters
+        std::uniform_int_distribution<int> dist_non_zero(8, 15); // Range for hex characters
 
         // Generate each hex digit
         for (size_t i = 0; i < digits; ++i) {
