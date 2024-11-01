@@ -12,8 +12,11 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 LINK_DIRECTORIES(${PYTHON_PATH}/libs)
 
+find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+
 include(fetch-gtest)
 include(fetch-boost)
+include(fetch-pybind)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 

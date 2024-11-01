@@ -7,3 +7,6 @@ set(SRC_FILE main.cpp)
 add_executable(${PROJECT_NAME} ${SRC_FILE})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+pybind11_add_module(rsa_py binding.cpp)
+target_include_directories(rsa_py PUBLIC ${CMAKE_SOURCE_DIR}/include)

@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <iomanip>
+#include <sstream>
 
 /**
  * @brief large integer data structure
