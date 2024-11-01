@@ -1,5 +1,6 @@
 #pragma once
 
+#include <thread>
 #include "random.hpp"
 
 #include "integer/integer.hpp"
@@ -18,9 +19,6 @@ inline void bit_set(BigInt& value, size_t b) {
 
 template<typename IntegerType>
 struct PrimeGenerator {
-
-
-
     static inline std::vector<uint32_t> small_primes = {};
 
     static int generate_random() {
@@ -51,7 +49,7 @@ struct PrimeGenerator {
         return primes;
     }
 
-    static auto mod_exp(IntegerType base, IntegerType exponent, const IntegerType& mod) -> IntegerType {
+    static IntegerType mod_exp(IntegerType base, IntegerType exponent, const IntegerType& mod)  {
         IntegerType result{1};
         base = base % mod;
         while (exponent > 0) {
@@ -138,6 +136,34 @@ struct PrimeGenerator {
         return pass_miller_rabin(value, try_time);
     }
 
+    struct IntegerWithMutex {
+        std::mutex lock;
+        bool found = false;
+        IntegerType value;
+    };
+
+    static void find_prime(IntegerType start_value, int step, std::stop_token stop_token, std::stop_source& stop_source, IntegerWithMutex* result) {
+        IntegerType value = start_value;
+        int try_num = 1;
+        while(not stop_token.stop_requested()) {
+            try {
+                if (is_prime(value)) {
+                    std::scoped_lock lock(result->lock);
+                    result->found = true;
+                    result->value = value;
+                    std::cout <<"found" << std::endl;
+                    stop_source.request_stop();
+                    break;
+                }
+                value = value + step;
+                try_num++;
+            }
+            catch (std::exception& e) {
+                std::cerr << e.what();
+            }
+        }
+    }
+
     /**
      * @brief generate a prime integer with given bit count
      * @param bit_count
@@ -145,30 +171,36 @@ struct PrimeGenerator {
      */
     static IntegerType get_prime(int bit_count) {
         if (small_primes.empty())
-            small_primes = generate_primes(1024);
+            small_primes = generate_primes(4096);
 
         std::cout << small_primes.size() << std::endl;
 
-        std::string num_str = Random::generate_random_large_number<Random::DigitFormat::hex>(bit_count);
+        IntegerWithMutex result;
+        uint32_t num_threads = std::thread::hardware_concurrency();
+        std::cout << num_threads << std::endl;
+        std::stop_source stop_source;
 
-        std::cout << num_str << std::endl;
-        std::cout << num_str.size() << std::endl;
+        std::vector<std::jthread> threads;
+        for (uint32_t i = 0; i < num_threads; ++i) {
+            std::string num_str;
+            if constexpr (std::is_same_v<IntegerType, BigInt>) {
+                num_str = Random::generate_random_large_number<Random::DigitFormat::hex>(bit_count);
+            } else {
+                num_str = Random::generate_random_large_number<Random::DigitFormat::dec>(bit_count);
+            }
+            IntegerType value(num_str);
 
-        IntegerType value(num_str);
-
-        std::cout << msb(value) << std::endl;
-
-        if (not bit_test(value, 0)) {
-            bit_set(value, 0);
+            if (not bit_test(value, 0)) {
+                bit_set(value, 0);
+            }
+            threads.emplace_back(find_prime, value, 2, stop_source.get_token(), std::ref(stop_source), &result);
         }
 
-        int try_num = 0;
-        while(not is_prime(value)) {
-            try_num ++;
-            value = value + 2;
+        for (auto& t : threads) {
+            t.join();
         }
 
-        return value;
+        return result.value;
     }
 
 };

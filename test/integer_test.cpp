@@ -146,13 +146,13 @@ TEST(IntegerTest, MultiplicationBenchmark) {
     double our_sum = 0;
 
     for (int i = 0; i < 10; ++i) {
-        std::string rd1 = generate_random_large_number(2048);
-        std::string rd2 = generate_random_large_number(1024);
+        std::string rd1 = generate_random_large_number(400);
+        std::string rd2 = generate_random_large_number(200);
         cpp_int num1(convert_hex_to_dec(rd1));
         cpp_int num2(convert_hex_to_dec(rd2));
 
         auto boost_start = std::chrono::steady_clock::now();
-        cpp_int sum = num1 * num2;
+        cpp_int sum = num1 / num2;
         auto boost_end = std::chrono::steady_clock::now();
 
         double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
@@ -162,7 +162,7 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         BigInt big2(rd2);
 
         auto our_start = std::chrono::steady_clock::now();
-        BigInt result = big1 * big2;
+        BigInt result = big1 / big2;
         auto our_end = std::chrono::steady_clock::now();
 
         our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();
@@ -230,8 +230,8 @@ TEST(IntegerTest, ModExpBenchmark) {
     double our_sum = 0;
 
     for (int i = 0; i < 10; ++i) {
-        std::string rd1 = generate_random_large_number(300);
-        std::string rd2 = generate_random_large_number(300);
+        std::string rd1 = generate_random_large_number(192);
+        std::string rd2 = generate_random_large_number(192);
         cpp_int num1(convert_hex_to_dec(rd1));
         cpp_int num2(convert_hex_to_dec(rd2));
 
@@ -272,6 +272,11 @@ TEST(IntegerTest, DivisionTest) {
         BigInt result = big1 / big2;
 
         EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+
+        if (convert_hex_to_dec(result.to_string()) != sum.str()) {
+            std::cout << rd1 << std::endl;
+            std::cout << rd2 << std::endl;
+        }
     }
 }
 
@@ -352,4 +357,36 @@ TEST(IntegerTest, SpaceShipTest) {
         EXPECT_EQ(big1 > big2, num1 > num2);
         EXPECT_EQ(big1 >= big2, num1 >= num2);
     }
+}
+
+TEST(IntegerTest, ModTest1) {
+    std::string rd1 = "0x1c130ff1327fe487584457e1f5c16bbdd80ab606a5600d5d20";
+    std::string rd2 = "0x1205152f6707c1f88495ffe043ed32ac75074905968376f6d6";
+    cpp_int num1(convert_hex_to_dec(rd1));
+    cpp_int num2(convert_hex_to_dec(rd2));
+
+    cpp_int sum = num1 % num2;
+
+    BigInt big1(rd1);
+    BigInt big2(rd2);
+
+    BigInt result = big1 % big2;
+
+    EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
+}
+
+TEST(IntegerTest, ModTest2) {
+        std::string rd1 = "0x103b5075ca26dcab629327871db769303a0eb8653e0a30c7c05b1c186dc18dc480ab47da08ef67d49c0cdd44f954a5f93b26f9018431073249cf7d70a7d3681b4640cb3397d646c0e29ea0e55bb293f20fbcd209b8206fc6dc23bc05a7ed9e6d2dcad645d7729345d0e6eb211934d0edde4d1998d103f2cf45d1a2abff852e7a8a21581a06a3acfab0477f9c80000000000000000";
+        std::string rd2 = "0xf353b8d83730c1556039a1570fc40c94b73c32a8a8d95cbdeadf2120cf7b52a8e3c8e54a9a5899fee7c07478ad8a371bb14e5a1e32912d7f56d82ac1bbdd4747b699894143a6d225d94feac3ea9618629d966de859a580ac5c741b1150275285";
+        cpp_int num1(convert_hex_to_dec(rd1));
+        cpp_int num2(convert_hex_to_dec(rd2));
+
+        cpp_int sum = num1 % num2;
+
+        BigInt big1(rd1);
+        BigInt big2(rd2);
+
+        BigInt result = big1 % big2;
+
+        EXPECT_EQ(convert_hex_to_dec(result.to_string()), sum.str());
 }
