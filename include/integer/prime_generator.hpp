@@ -31,7 +31,7 @@ struct PrimeGenerator {
     }
 
     static std::vector<uint32_t> generate_primes(int count) {
-        int limit = 50000;  // Increase if needed
+        int limit = 100000;  // Increase if needed
         std::vector<bool> is_prime(limit, true);
         std::vector<uint32_t> primes;
 
@@ -176,7 +176,7 @@ struct PrimeGenerator {
      */
     static IntegerType get_prime(int bit_count) {
         if (small_primes.empty())
-            small_primes = generate_primes(4096);
+            small_primes = generate_primes(8192);
 
         std::cout << small_primes.size() << std::endl;
 

@@ -20,5 +20,10 @@ include(fetch-pybind)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx -fPIC -g")
+endif()
+
+
 add_subdirectory(src)
 add_subdirectory(test)

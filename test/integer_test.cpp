@@ -146,13 +146,13 @@ TEST(IntegerTest, MultiplicationBenchmark) {
     double our_sum = 0;
 
     for (int i = 0; i < 10; ++i) {
-        std::string rd1 = generate_random_large_number(400);
-        std::string rd2 = generate_random_large_number(200);
+        std::string rd1 = generate_random_large_number(1024);
+        std::string rd2 = generate_random_large_number(1024);
         cpp_int num1(convert_hex_to_dec(rd1));
         cpp_int num2(convert_hex_to_dec(rd2));
 
         auto boost_start = std::chrono::steady_clock::now();
-        cpp_int sum = num1 / num2;
+        cpp_int sum = num1 * num2;
         auto boost_end = std::chrono::steady_clock::now();
 
         double duration_boost = std::chrono::duration<double, std::nano>(boost_end - boost_start).count();
@@ -162,7 +162,7 @@ TEST(IntegerTest, MultiplicationBenchmark) {
         BigInt big2(rd2);
 
         auto our_start = std::chrono::steady_clock::now();
-        BigInt result = big1 / big2;
+        BigInt result = big1 * big2;
         auto our_end = std::chrono::steady_clock::now();
 
         our_sum += std::chrono::duration<double, std::nano>(our_end - our_start).count();
@@ -226,12 +226,13 @@ TEST(IntegerTest, SingleOperationBenchmark) {
 }
 
 TEST(IntegerTest, ModExpBenchmark) {
+//    GTEST_SKIP();
     double boost_sum = 0;
     double our_sum = 0;
 
     for (int i = 0; i < 10; ++i) {
-        std::string rd1 = generate_random_large_number(192);
-        std::string rd2 = generate_random_large_number(192);
+        std::string rd1 = generate_random_large_number(2048);
+        std::string rd2 = generate_random_large_number(1024);
         cpp_int num1(convert_hex_to_dec(rd1));
         cpp_int num2(convert_hex_to_dec(rd2));
 

@@ -9,17 +9,19 @@
 /**
  * @brief large integer data structure
  *
- * @tparam bit should be times of 4
+ * @tparam bit should be times of 32 / 64
  */
-template<int bit = 32>
+template<int bit, typename DataType , typename InterDataType, typename SignedInterDataType>
 struct Integer {
-    explicit Integer() = default;
+    explicit Integer() {
+        current_length = 0;
+    };
 
     explicit Integer(int val) {
         from_int(val);
     }
 
-    explicit Integer(uint64_t val) {
+    explicit Integer(DataType val) {
         from_single(val);
     }
 
@@ -74,7 +76,7 @@ struct Integer {
             return std::strong_ordering::less;
         }
 
-        return data[0] <=> static_cast<uint64_t>(other);
+        return data[0] <=> static_cast<DataType>(other);
     }
 
     auto operator <=> (const Integer& other) const {
@@ -108,16 +110,15 @@ struct Integer {
         Integer result;
 
         size_t n = std::max(current_length, other.current_length);
-
         result.alloc_data(std::max(current_length, other.current_length));
 
-        size_t carry = 0;
+        DataType carry = 0;
         for (size_t i = 0; i < n; i++) {
-            size_t a = i < current_length ? data[i] : 0;
-            size_t b = i < other.current_length ? other.data[i]: 0;
-            size_t sum = a + b + carry;
-            result.data[i] = sum & 0xFFFFFFFF;
-            carry = sum >> bit;
+            DataType a = i < current_length ? data[i] : 0;
+            DataType b = i < other.current_length ? other.data[i]: 0;
+            DataType sum = a + b + carry;
+            result.data[i] = sum;
+            carry = sum >= b ? 0 : 1;
         }
 
         result.current_length = n;
@@ -135,34 +136,25 @@ struct Integer {
         result.alloc_data(current_length);
         result.current_length = current_length;
 
-        int64_t borrow = 0;
+        DataType borrow = 0;
         for (size_t i = 0; i < current_length; ++i) {
-            int64_t subtrahend = (i < other.current_length ? other.data[i] : 0) + borrow;
-            int64_t difference = static_cast<int64_t>(data[i]) - subtrahend;
-
-            if (difference < 0) {
-                difference += radix();
-                borrow = 1;
-            } else {
-                borrow = 0;
-            }
-
-            result.data[i] = static_cast<uint64_t>(difference);
+            DataType subtrahend = (i < other.current_length ? other.data[i] : 0) + borrow;
+            DataType difference = data[i] - subtrahend;
+            borrow = difference > data[i] ? 1 : 0;
+            result.data[i] = static_cast<DataType>(difference);
         }
 
-        // Remove any leading zeroes in the result
         while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
             result.current_length--;
         }
-
         return result;
     }
 
-    Integer operator + (const uint64_t other) const {
+    Integer operator + (const DataType other) const {
         return add_one_bit(other);
     }
 
-    Integer operator - (const uint64_t other) const {
+    Integer operator - (const DataType other) const {
         Integer value;
         value.alloc_data(1);
         value.current_length = 1;
@@ -172,10 +164,10 @@ struct Integer {
     }
 
     Integer operator * (const Integer& other) const {
-        return long_multiplication(other);
+        return karatsuba_multiplication(other);
     }
 
-    Integer operator * (const uint64_t other) const {
+    Integer operator * (const DataType other) const {
         return multiply_one_bit(other);
     }
 
@@ -190,8 +182,8 @@ struct Integer {
         return reminder;
     }
 
-    uint64_t operator % (int other) const {
-        uint64_t reminder;
+    DataType operator % (int other) const {
+        DataType reminder;
         divide_one_bit(other, reminder);
         return reminder;
     }
@@ -201,7 +193,7 @@ struct Integer {
         return data[0] == other;
     }
 
-    bool operator == (const uint64_t other) const {
+    bool operator == (const DataType other) const {
         if (current_length != 1) return false;
         return data[0] == other;
     }
@@ -216,9 +208,9 @@ struct Integer {
 
 
         if (bit_shift > 0) {
-            uint64_t carry = 0;
+            DataType carry = 0;
             for (int i = static_cast<int>(current_length) - 1; i >= 0; --i) {
-                uint64_t new_carry = (data[i] << bit_shift_inv) % radix();
+                DataType new_carry = (data[i] << bit_shift_inv) % radix();
                 data[i] = (data[i] >> bit_shift) | carry;
                 carry = new_carry;
             }
@@ -290,10 +282,10 @@ struct Integer {
     void from_int(int val) {
         current_length = 1;
         alloc_data(current_length);
-        data[0] = static_cast<uint64_t>(val);
+        data[0] = static_cast<DataType>(val);
     }
 
-    void from_single(uint64_t val) {
+    void from_single(DataType val) {
         current_length = 1;
         alloc_data(current_length);
         data[0] = val;
@@ -341,7 +333,7 @@ struct Integer {
             throw std::runtime_error("this only for computing exponential of odd numbers");
         }
 
-        uint64_t r = mod.current_length * bit;
+        DataType r = mod.current_length * bit;
         Integer R = Integer{1}.left_shift_chunk(mod.current_length);
         Integer mod_inverse = mod.inverse_mod_2_pow(r);
 
@@ -362,18 +354,19 @@ struct Integer {
     }
 
     //private:
-    Integer add_one_bit(const uint64_t other) const {
+    Integer add_one_bit(const DataType other) const {
         Integer result;
         size_t n = current_length + 1;
         result.current_length = n;
         result.alloc_data(n);
 
-        size_t carry = other;
+        DataType carry = other;
 
         for (int i = 0; i <current_length; i++) {
-            uint64_t sum = data[i] + carry;
-            carry = sum >> bit;
-            result.data[i] = sum & 0xFFFFFFFF;
+            DataType sum = data[i] + carry;
+            carry = 0;
+            if (sum < data[i]) carry = 1;
+            result.data[i] = sum;
         }
 
         result.data[n - 1] = carry;
@@ -384,7 +377,7 @@ struct Integer {
         return result;
     }
 
-    Integer multiply_one_bit(const uint64_t other) const {
+    Integer multiply_one_bit(const DataType other) const {
         Integer result;
         size_t n = current_length + 1;
         result.current_length = n;
@@ -392,8 +385,8 @@ struct Integer {
 
         size_t carry = 0;
 
-        for (int i = 0; i <current_length; i++) {
-            uint64_t prod = data[i] * other + carry;
+        for (int i = 0; i < current_length; i++) {
+            InterDataType prod = static_cast<InterDataType>(data[i]) * static_cast<InterDataType>(other) + carry;
             carry = prod / radix();
             result.data[i] = prod % radix();
         }
@@ -406,7 +399,7 @@ struct Integer {
         return result;
     }
 
-    Integer divide_one_bit(const uint64_t divisor, uint64_t& reminder) const {
+    Integer divide_one_bit(const DataType divisor, DataType& reminder) const {
         if (divisor > radix())
             throw std::runtime_error("divisor too large, use Integer");
 
@@ -415,14 +408,14 @@ struct Integer {
         result.alloc_data(n);
         result.current_length = n;
 
-        uint64_t cur_reminder = 0;
+        InterDataType cur_reminder = 0;
         for (int i = n - 1; i >= 0; i--) {
-            cur_reminder = (cur_reminder << bit) + data[i];
+            cur_reminder = static_cast<InterDataType>(cur_reminder << bit) + data[i];
 
-            uint64_t quotient = cur_reminder / divisor;
+            InterDataType quotient = cur_reminder / divisor;
             cur_reminder -= quotient * divisor;
 
-            result.data[i] = quotient & 0xFFFFFFFF;
+            result.data[i] = quotient % radix();
             result.data[i + 1] += quotient >> bit;
         }
 
@@ -432,19 +425,14 @@ struct Integer {
     }
 
     void subtract_inplace(const Integer& other) {
-        int64_t borrow = 0;
+        DataType borrow = 0;
         for (size_t i = 0; i < current_length; ++i) {
-            int64_t subtrahend = other.data[i] + borrow;
-            int64_t difference = static_cast<int64_t>(data[i]) - subtrahend;
+            DataType subtrahend = other.data[i] + borrow;
+            DataType difference = data[i] - subtrahend;
 
-            if (difference < 0) {
-                difference += radix();
-                borrow = 1;
-            } else {
-                borrow = 0;
-            }
+            borrow = difference > data[i] ? 1 : 0;
 
-            data[i] = static_cast<uint64_t>(difference);
+            data[i] = static_cast<DataType>(difference);
         }
 
         remove_leading_zero();
@@ -456,31 +444,69 @@ struct Integer {
         size_t n = current_length + other.current_length;
         result.current_length = current_length + other.current_length;
         result.alloc_data(n);
-        size_t carry = 0;
 
         for (size_t j = 0; j < other.current_length; j++) {
+            DataType carry = 0;
             for (int i = 0; i < current_length ; i += 2) {
-                uint64_t prod = other.data[j] * data[i] + result.data[i + j] + carry;
-                carry = prod >> bit;
-                result.data[i + j] = prod & 0xFFFFFFFF; // @todo: only works when bit = 32
+                InterDataType prod = static_cast<InterDataType>(other.data[j]) * static_cast<InterDataType>(data[i]) + result.data[i + j] + carry;
+                carry = static_cast<DataType>(prod >> bit);
+                result.data[i + j] = static_cast<DataType>(prod); // @todo: only works when bit = 32
 
                 if (i + 1 < current_length) {
-                    uint64_t prod2 = other.data[j] * data[i + 1] + result.data[i + j + 1] + carry;
-                    carry = (prod2 >> 32);
-                    result.data[i + j + 1] = prod2 & 0xFFFFFFFF;
+                    InterDataType prod2 = static_cast<InterDataType>(other.data[j]) * static_cast<InterDataType>(data[i + 1]) + result.data[i + j + 1] + carry;
+                    carry = static_cast<DataType>(prod2 >> bit);
+                    result.data[i + j + 1] = static_cast<DataType>(prod2);
                 }
             }
-            if (carry > 0) {
-                uint64_t sum = result.data[current_length + j] + carry;
-                result.data[current_length + j] = sum & 0xFFFFFFFF;
-                carry = sum >> bit;
-            }
+            result.data[current_length + j] = carry;
         }
 
         while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
             result.current_length--;
         }
 
+        return result;
+    }
+
+    Integer karatsuba_multiplication(const Integer& other) const {
+        // Base case: use long multiplication for small numbers
+        if (current_length <= 128 || other.current_length <= 128) {
+            return long_multiplication(other);
+        }
+        size_t n = std::max(current_length, other.current_length);
+        size_t half = (n + 1) / 2;
+        bool res = *this < other;
+        const Integer & v1 = res ? other: *this;
+        const Integer & v2 = res ? *this: other;
+        // Split `this` into high and low parts
+        Integer low1, high1;
+        low1.data = std::vector<DataType>(v1.data.begin(), v1.data.begin() + half);
+        high1.data = std::vector<DataType>(v1.data.begin() + half, v1.data.begin() + v1.current_length);
+        low1.current_length = half;
+        high1.current_length = v1.current_length - half;
+        Integer result;
+        if (v2.current_length <= half) {
+            Integer z0 = std::move(high1.karatsuba_multiplication(v2));
+            Integer z1 = std::move(low1.karatsuba_multiplication(v2));
+            result = std::move(z0.left_shift_chunk(half) + z1);
+        } else {
+            // Split `other` into high and low parts
+            Integer low2, high2;
+            low2.data = std::vector<DataType>(v2.data.begin(), v2.data.begin() + half);
+            high2.data = std::vector<DataType>(v2.data.begin() + half, v2.data.begin() + v2.current_length);
+            low2.current_length = low2.data.size();
+            high2.current_length = high2.data.size();
+            // Recursively calculate three products
+            Integer z0 = std::move(low1.karatsuba_multiplication(low2));
+            Integer z2 = std::move(high1.karatsuba_multiplication(high2));
+            Integer z1 = std::move((low1 + high1).karatsuba_multiplication(low2 + high2) - z0 - z2);
+            result = std::move(z0 + z1.left_shift_chunk(half) + z2.left_shift_chunk(half * 2));
+        }
+        // Update result length
+        result.current_length = current_length + other.current_length;
+        while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
+            --result.current_length;
+        }
         return result;
     }
 
@@ -525,11 +551,7 @@ struct Integer {
         Integer base = *this;
         for (int i = 0; i < k - 1; i ++) {
             result = (result * base).mod_2_pow(k);
-            Integer tmp = (base * base).mod_2_pow(k);
-            if (tmp.data[0] == 0) {
-                int t = 0;
-            }
-            base = tmp;
+            base = (base * base).mod_2_pow(k);
         }
         return result;
     }
@@ -572,7 +594,7 @@ struct Integer {
         Integer dividend = *this;
         Integer divisor = t_divisor;
         Integer result;
-        uint64_t v = radix() / (divisor.data[divisor.current_length - 1] + 1);
+        DataType v = radix() / (divisor.data[divisor.current_length - 1] + 1);
         dividend = dividend * v;
         divisor = divisor * v;
 
@@ -580,7 +602,7 @@ struct Integer {
         int m = divisor.current_length;
         result.alloc_data(n - m);
 
-        uint64_t highest  = divisor.data[divisor.current_length - 1];
+        DataType highest  = divisor.data[divisor.current_length - 1];
 
         if (m == n) {
             result.alloc_data(1);
@@ -602,17 +624,16 @@ struct Integer {
             Integer reminder = dividend.get_chunks(i, 1 + m);
 
             // quotient estimation
-            long long q = (reminder.data[m] * radix() + reminder.data[m - 1]) / highest - 2;
-            uint64_t t1 = (reminder.data[m] * radix() + reminder.data[m - 1]) / highest;
-            q = std::max(q, 0ll);
+            SignedInterDataType q = (static_cast<InterDataType>(reminder.data[m]) * radix() + reminder.data[m - 1]) / static_cast<InterDataType>(highest) - 2;
+            q = std::max(q, static_cast<SignedInterDataType>(0));
 
             // remove leading zeros
             reminder.remove_leading_zero();
             if (q < radix()) {
                 reminder.subtract_inplace(divisor.multiply_one_bit(q));
             } else {
-                uint64_t q_low = q % radix();
-                uint64_t q_high = q / radix();
+                DataType q_low = q % radix();
+                DataType q_high = q >> bit;
                 reminder.subtract_inplace(divisor.multiply_one_bit(q_low) + divisor.left_shift_chunk(1).multiply_one_bit(q_high));
             }
 
@@ -621,9 +642,6 @@ struct Integer {
                 q++;
                 t++;
                 if (t > 3) {
-                    std::cout << (reminder - divisor).to_string() << std::endl;
-                    std::cout << radix() << std::endl;
-                    std::cout << (reminder.data[m] * radix() + reminder.data[m - 1]) / highest << std::endl;
                     throw std::runtime_error("knuth division failed");
                 }
                 reminder.subtract_inplace(divisor);
@@ -662,9 +680,9 @@ struct Integer {
             remainder = remainder * radix() + data[i];
 
             // Determine how many times divisor fits into remainder (trial division)
-            uint64_t left = 0, right = radix() - 1, quotient_chunk = 0;
+            InterDataType left = 0, right = radix() - 1, quotient_chunk = 0;
             while (left <= right) {
-                uint64_t mid = (left + right) / 2;
+                InterDataType mid = (left + right) / 2;
                 Integer candidate = divisor * mid;
                 if (candidate <= remainder) {
                     quotient_chunk = mid;
@@ -695,12 +713,16 @@ struct Integer {
         std::fill(data.begin(), data.begin() + len, 0);
     }
 
-    [[nodiscard]] constexpr size_t radix() const {
+    [[nodiscard]] constexpr InterDataType radix() const {
         return std::pow(2, bit);
     }
 
-    std::vector<uint64_t> data;
+    std::vector<DataType> data;
     size_t current_length = 0;
 };
 
-using BigInt = Integer<32>;
+#if defined(__GNUC__)
+using BigInt = Integer<64, uint64_t, __uint128_t, __int128_t>;
+#else
+using BigInt = Integer<32, uint32_t, uint64_t, int64_t>;
+#endif

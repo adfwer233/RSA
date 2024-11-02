@@ -9,7 +9,7 @@
 
 TEST(PrimeGeneratorTest, SimpleTest) {
     // 768 / 4 bits
-    auto result = PrimeGenerator<BigInt>::get_prime(256);
+    auto result = PrimeGenerator<BigInt>::get_prime(192);
     std::cout << result.to_string() << std::endl;
 
 //    auto res = PrimeGenerator<cpp_int>::get_prime(240);
