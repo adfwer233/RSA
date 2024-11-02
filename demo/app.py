@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 import rsa_py as rsa
+import hashlib
 
 app = FastAPI()
 
@@ -57,7 +58,21 @@ async def decrypt(payload: dict = Body(...)):
     return {
         "message": hex_to_string(result.to_string())
     }
-# @app.get("/greet", response_class=HTMLResponse)
-# async def greet(request: Request, name: str = ""):
-#     greeting = f"Hello, {name}!" if name else "Hello, stranger!"
-#     return templates.TemplateResponse("index.html", {"request": request, "greeting": greeting})
+
+@app.post("/api/rsa/sign")
+async def sign(payload: dict = Body(...)):
+    hash_text = hashlib.md5(payload["message"].encode(encoding='UTF-8')).hexdigest()
+    result = rsa_manager.sign(rsa.BigInt(hash_text))
+    return {
+        "cipher": result.to_string()
+    }
+
+@app.post("/api/rsa/verify")
+async def sign(payload: dict = Body(...)):
+    text = hashlib.md5(payload["text"].encode(encoding='UTF-8')).hexdigest()
+    sign = payload["signature"]
+    result = rsa_manager.verify(rsa.BigInt(text), rsa.BigInt(sign))
+    return {
+        "result": result
+    }
+

@@ -65,9 +65,12 @@ struct RSA {
      * @param signature
      * @return
      */
-    bool verify(const BigInt& digest, const BigInt signature) {
-        auto encrypted = BigInt::fast_odd_exp_mod(digest, public_key.e, private_key.n);
-        return encrypted == signature;
+    bool verify(const BigInt& digest, const BigInt& signature) {
+        auto encrypted = BigInt::fast_odd_exp_mod(signature, public_key.e, private_key.n);
+        spdlog::info(encrypted.to_string());
+        spdlog::info(digest.to_string());
+
+        return encrypted == digest;
     }
 
     /**

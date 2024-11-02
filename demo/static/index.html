@@ -10,10 +10,10 @@
 <body>
     
     <div class="container-md">
-        <h1>RSA Demo Application</h1>
-        <div class="col">
+        <h1 style="text-align: center;">RSA Demo Application</h1>
+        <div class="col mt-3">
             <div class="row">
-                <div class="col-md-5">
+                <div class="col-md-6">
                     <h2> Key Pair Generation </h2>
                    
 
@@ -53,7 +53,7 @@
                     </div>
                 
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-6">
                     <h2> Encrypt and Decrypt </h2>
 
                     <div class="col">
@@ -68,16 +68,23 @@
                         <button class="btn btn-primary mb" onclick="encryptText()">
                             Encrpyt Text
                         </button>
+                        <button class="btn btn-primary mb" onclick="signText()">
+                            Sign Text
+                        </button>
                     </div>
                     
                     <hr class="divider">
                     <div class="col mb-3">
                         <h4>Ciper</h4>
-                        <textarea class="form-control" id="cipher" rows="15" readwrite> Some Text Here </textarea>
+                        <textarea class="form-control" id="cipher" rows="15" readonly> </textarea>
                     </div>
 
                     <button class="btn btn-primary mb" onclick="decryptText()">
                         Decrypt Text
+                    </button>
+
+                    <button class="btn btn-primary mb" onclick="verifyText()">
+                        Verify Text
                     </button>
                 </div>
             </div>
@@ -143,6 +150,49 @@
                 .then(data => {
                     console.log("Received data:", data);
                     document.getElementById('text').value = data.message;
+                })
+                .catch(error => {
+                    console.log("Error:", error);
+                    alert("Error: " + error);
+                });
+        }
+
+        function signText() {
+            const text = document.getElementById('text').value;
+            fetch("http://localhost:8000/api/rsa/sign", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({"message": text})
+            }).then(response => response.json())
+                .then(data => {
+                    console.log("Received data:", data);
+                    document.getElementById('cipher').value = data.cipher;
+                })
+                .catch(error => {
+                    console.log("Error:", error);
+                    alert("Error: " + error);
+                });
+        }
+
+        function verifyText() {
+            const text = document.getElementById('text').value;
+            const signature = document.getElementById('cipher').value;
+            fetch("http://localhost:8000/api/rsa/verify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({"text": text, "signature": signature})
+            }).then(response => response.json())
+                .then(data => {
+                    console.log("Received data:", data);
+                    if (data.result) {
+                        alert("Verify Success!");
+                    } else {
+                        alert("Verify Failed!");
+                    }
                 })
                 .catch(error => {
                     console.log("Error:", error);
