@@ -17,11 +17,15 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 include(fetch-gtest)
 include(fetch-boost)
 include(fetch-pybind)
+include(fetch-spdlog)
 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${spdlog_SOURCE_DIR}/include)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx -fPIC -g")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx -fPIC -g")
+    endif()
 endif()
 
 

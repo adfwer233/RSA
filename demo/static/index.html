@@ -12,32 +12,73 @@
     <div class="container-md">
         <h1>RSA Demo Application</h1>
         <div class="col">
-        
-            <form action="/greet" method="get" class="form-inline">
-                <div class="form-group mb-2">
-                    <label for="name" class="sr-only">Name</label>
-                    <input type="text" class="form-control" id="name" name="name" placeholder="Enter your name">
-                </div>
-                <button type="submit" class="btn btn-primary mb-2">Greet Me</button>
-            </form>
-
-            <a href="#" class="btn btn-primary">Go somewhere</a>
-
             <div class="row">
                 <div class="col-md-5">
-                    <h3> private </h3>
-                    <div class="col">
-                        <textarea class="form-control" id="prime" name="prime" rows="5" readonly>
-                            
-                        </textarea>
+                    <h2> Key Pair Generation </h2>
+                   
 
-                        <button class="btn btn-primary mb" onclick="generateKeys()">
-                            Generate Prime
-                        </button>
+                    <h3> Private Key </h3>
+                    <div class="col">
+                        <h4>p</h4>
+                        <textarea class="form-control" id="private_p" rows="5" readonly> </textarea>
+                        <h4>q</h4>
+                        <textarea class="form-control" id="private_q" rows="5" readonly> </textarea>
+                        <h4>d</h4>
+                        <textarea class="form-control" id="private_d" rows="5" readonly> </textarea>
                     </div>
+                    <hr class="divider">
+                    <h3> Public Key </h3>
+                    <div class="col">
+                        <h4>n</h4>
+                        <textarea class="form-control" id="public_n" rows="5" readonly> </textarea>
+                        <h4>e</h4>
+                        <textarea class="form-control" id="public_e" rows="5" readonly> </textarea>
+                    </div>
+
+                    <hr class="divider">
+                    <div class="row">
+                        <div class="col">
+                            <select class="form-select form-select-sm mb-2" aria-label="RSA Type" id="rsa-len">
+                                <option selected value=768>RSA-768</option>
+                                <option value=1024>RSA-1024</option>
+                                <option value=2048>RSA-2048</option>
+                                <option value=4096>RSA-4096</option>
+                            </select> 
+                        </div>
+                        <div class="col">
+                            <button class="btn btn-primary mb-2" onclick="generateKeys()">
+                                Generate Key Pair
+                            </button>
+                        </div>
+                    </div>
+                
                 </div>
                 <div class="col-md-5">
-                    <h3> private </h3>
+                    <h2> Encrypt and Decrypt </h2>
+
+                    <div class="col">
+                        <h4>Text</h4>
+                        <textarea class="form-control" id="text" rows="15" readwrite> Some Text Here </textarea>
+                    </div>
+                    <span></span>
+                    <div class="mt-2">
+                        <button class="btn btn-primary mb" onclick="clearText()">
+                            Clear Text
+                        </button>
+                        <button class="btn btn-primary mb" onclick="encryptText()">
+                            Encrpyt Text
+                        </button>
+                    </div>
+                    
+                    <hr class="divider">
+                    <div class="col mb-3">
+                        <h4>Ciper</h4>
+                        <textarea class="form-control" id="cipher" rows="15" readwrite> Some Text Here </textarea>
+                    </div>
+
+                    <button class="btn btn-primary mb" onclick="decryptText()">
+                        Decrypt Text
+                    </button>
                 </div>
             </div>
         </div>
@@ -45,16 +86,63 @@
 
     <script>
         function generateKeys() {
+            const len = document.getElementById('rsa-len').value;
             fetch("http://localhost:8000/api/rsa/generate-prime", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({"len": 192})
+                body: JSON.stringify({"len": Number(len)})
             }).then(response => response.json())
                 .then(data => {
                     console.log("Received data:", data);
-                    document.getElementById('prime').value = data.p;
+                    document.getElementById('private_p').value = data.p;
+                    document.getElementById('private_q').value = data.q;
+                    document.getElementById('private_d').value = data.d;
+                    document.getElementById('public_n').value = data.n;
+                    document.getElementById('public_e').value = data.e;
+                })
+                .catch(error => {
+                    console.log("Error:", error);
+                    alert("Error: " + error);
+                });
+        }
+
+        function clearText() {
+            document.getElementById('text').value = ""
+        }
+
+        function encryptText() {
+            const text = document.getElementById('text').value;
+            fetch("http://localhost:8000/api/rsa/encrypt", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({"message": text})
+            }).then(response => response.json())
+                .then(data => {
+                    console.log("Received data:", data);
+                    document.getElementById('cipher').value = data.cipher;
+                })
+                .catch(error => {
+                    console.log("Error:", error);
+                    alert("Error: " + error);
+                });
+        }
+
+        function decryptText() {
+            const cipher = document.getElementById('cipher').value;
+            fetch("http://localhost:8000/api/rsa/decrypt", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({"cipher": cipher})
+            }).then(response => response.json())
+                .then(data => {
+                    console.log("Received data:", data);
+                    document.getElementById('text').value = data.message;
                 })
                 .catch(error => {
                     console.log("Error:", error);

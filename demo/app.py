@@ -8,6 +8,8 @@ import rsa_py as rsa
 
 app = FastAPI()
 
+rsa_manager = rsa.RSA()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,12 +27,35 @@ async def read_root(request: Request):
 
 @app.post("/api/rsa/generate-prime")
 async def generate_keys(payload: dict = Body(...)):
-    r = rsa.RSA()
+    res = rsa_manager.generate_key_pair(int(payload["len"]))
+    public_key, private_key = res[0], res[1]
+    return {
+        "p": private_key.p.to_string(),
+        "q": private_key.q.to_string(),
+        "n": private_key.n.to_string(),
+        "d": private_key.d.to_string(),
+        "e": public_key.e.to_string(),
+    }
 
-    prime_hex = r.generate_prime(192).to_string()
+@app.post("/api/rsa/encrypt")
+async def encrypt(payload: dict = Body(...)):
+    value = rsa.BigInt("0x" + payload["message"].encode().hex())
+    result = rsa_manager.encrypt(value)
 
     return {
-        "p": prime_hex
+        "cipher": result.to_string()
+    }
+
+def hex_to_string(h):
+    # Remove "0x" prefix if present, then decode
+    return bytes.fromhex(h[2:] if h.startswith("0x") else h).decode()
+
+@app.post("/api/rsa/decrypt")
+async def decrypt(payload: dict = Body(...)):
+    value = rsa.BigInt(payload["cipher"])
+    result = rsa_manager.decrypt(value)
+    return {
+        "message": hex_to_string(result.to_string())
     }
 # @app.get("/greet", response_class=HTMLResponse)
 # async def greet(request: Request, name: str = ""):

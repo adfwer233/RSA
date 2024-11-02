@@ -93,7 +93,7 @@ struct Integer {
         return std::strong_ordering::equal;
     }
 
-    bool operator==(const Integer& rhs) {
+    bool operator == (const Integer& rhs) const {
         if (current_length != rhs.current_length) {
             return false;
         }
@@ -107,47 +107,11 @@ struct Integer {
     }
 
     Integer operator + (const Integer& other) const {
-        Integer result;
-
-        size_t n = std::max(current_length, other.current_length);
-        result.alloc_data(std::max(current_length, other.current_length));
-
-        DataType carry = 0;
-        for (size_t i = 0; i < n; i++) {
-            DataType a = i < current_length ? data[i] : 0;
-            DataType b = i < other.current_length ? other.data[i]: 0;
-            DataType sum = a + b + carry;
-            result.data[i] = sum;
-            carry = sum >= b ? 0 : 1;
-        }
-
-        result.current_length = n;
-
-        if (carry > 0) {
-            result.data[n] = carry;
-            result.current_length = n + 1;
-        }
-
-        return result;
+        return add(other);
     }
 
     Integer operator - (const Integer& other) const {
-        Integer result;
-        result.alloc_data(current_length);
-        result.current_length = current_length;
-
-        DataType borrow = 0;
-        for (size_t i = 0; i < current_length; ++i) {
-            DataType subtrahend = (i < other.current_length ? other.data[i] : 0) + borrow;
-            DataType difference = data[i] - subtrahend;
-            borrow = difference > data[i] ? 1 : 0;
-            result.data[i] = static_cast<DataType>(difference);
-        }
-
-        while (result.current_length > 1 && result.data[result.current_length - 1] == 0) {
-            result.current_length--;
-        }
-        return result;
+        return subtract(other);
     }
 
     Integer operator + (const DataType other) const {
@@ -164,7 +128,8 @@ struct Integer {
     }
 
     Integer operator * (const Integer& other) const {
-        return karatsuba_multiplication(other);
+        auto result = karatsuba_multiplication(other);
+        return result;
     }
 
     Integer operator * (const DataType other) const {
@@ -273,19 +238,25 @@ struct Integer {
 
     Integer zero() const {
         Integer value;
-        value.alloc_data(1);
         value.current_length = 0;
-        value.data[0] = 0;
         return value;
     }
 
     void from_int(int val) {
+        if (val == 0) {
+            current_length = 0;
+            return;
+        }
         current_length = 1;
         alloc_data(current_length);
         data[0] = static_cast<DataType>(val);
     }
 
     void from_single(DataType val) {
+        if (val == 0) {
+            current_length = 0;
+            return;
+        }
         current_length = 1;
         alloc_data(current_length);
         data[0] = val;
@@ -353,7 +324,7 @@ struct Integer {
         return montgomery_reduce(result, R, r, mod, mod_inverse);
     }
 
-    //private:
+private:
     Integer add_one_bit(const DataType other) const {
         Integer result;
         size_t n = current_length + 1;
@@ -424,6 +395,58 @@ struct Integer {
         return std::move(result);
     }
 
+    /**
+     * @brief addition under the positive meaning
+     * @param other
+     * @return
+     */
+    Integer add(const Integer& other) const {
+        Integer result;
+        size_t n = std::max(current_length, other.current_length);
+        result.alloc_data(std::max(current_length, other.current_length));
+
+        DataType carry = 0;
+        for (size_t i = 0; i < n; i++) {
+            DataType a = i < current_length ? data[i] : 0;
+            DataType b = i < other.current_length ? other.data[i]: 0;
+            DataType sum = a + b + carry;
+            result.data[i] = sum;
+            carry = sum >= b ? 0 : 1;
+        }
+
+        result.current_length = n;
+
+        if (carry > 0) {
+            result.data[n] = carry;
+            result.current_length = n + 1;
+        }
+        return result;
+    }
+
+    /**
+     * @brief unsigned subtract (suppose this > other)
+     * @param other
+     * @return
+     */
+    Integer subtract(const Integer& other) const {
+        Integer result;
+        result.alloc_data(current_length);
+        result.current_length = current_length;
+
+        DataType borrow = 0;
+        for (size_t i = 0; i < current_length; ++i) {
+            DataType subtrahend = (i < other.current_length ? other.data[i] : 0) + borrow;
+            DataType difference = data[i] - subtrahend;
+            borrow = difference > data[i] ? 1 : 0;
+            result.data[i] = static_cast<DataType>(difference);
+        }
+
+        while (result.current_length >= 1 && result.data[result.current_length - 1] == 0) {
+            result.current_length--;
+        }
+        return result;
+    }
+
     void subtract_inplace(const Integer& other) {
         DataType borrow = 0;
         for (size_t i = 0; i < current_length; ++i) {
@@ -450,7 +473,7 @@ struct Integer {
             for (int i = 0; i < current_length ; i += 2) {
                 InterDataType prod = static_cast<InterDataType>(other.data[j]) * static_cast<InterDataType>(data[i]) + result.data[i + j] + carry;
                 carry = static_cast<DataType>(prod >> bit);
-                result.data[i + j] = static_cast<DataType>(prod); // @todo: only works when bit = 32
+                result.data[i + j] = static_cast<DataType>(prod);
 
                 if (i + 1 < current_length) {
                     InterDataType prod2 = static_cast<InterDataType>(other.data[j]) * static_cast<InterDataType>(data[i + 1]) + result.data[i + j + 1] + carry;
@@ -613,6 +636,7 @@ struct Integer {
                 result.current_length = 0;
                 result.data[0] = 0;
             }
+            t_reminder = *this - result * t_divisor;
             return result;
         }
 
@@ -719,6 +743,79 @@ struct Integer {
 
     std::vector<DataType> data;
     size_t current_length = 0;
+
+
+};
+
+template<typename UnsignedIntegerType>
+struct SignedInteger{
+    UnsignedIntegerType abs;
+    /**
+     * true: positive
+     * false: negative
+     * zero: unknown
+     */
+    bool sign = true;
+    SignedInteger() {}
+    SignedInteger(UnsignedIntegerType& t_abs): abs(t_abs) {}
+    SignedInteger(const UnsignedIntegerType& t_abs): abs(t_abs) {}
+    SignedInteger(UnsignedIntegerType&& t_abs): abs(std::move(t_abs)) {}
+
+    SignedInteger operator + (const SignedInteger& other) const {
+        SignedInteger result;
+        if (sign == other.sign) {
+            result.abs = abs + other.abs;
+            result.sign = sign;
+        }
+        else {
+            if (abs >= other.abs) {
+                result.abs = abs - other.abs;
+                result.sign = sign;
+            } else {
+                result.abs = other.abs - abs;
+                result.sign = other.sign;
+            }
+        }
+        return result;
+    }
+    SignedInteger operator - (const SignedInteger& other) const {
+        SignedInteger result;
+        if (sign != other.sign) {
+            result.abs = abs + other.abs;
+            result.sign = sign;
+        }
+        else {
+            if (abs >= other.abs) {
+                result.abs = abs - other.abs;
+                result.sign = sign;
+            } else {
+                result.abs = other.abs - abs;
+                result.sign = not sign;
+            }
+        }
+        return result;
+    }
+
+    SignedInteger operator * (const SignedInteger& other) const {
+        SignedInteger result;
+        result.abs = abs * other.abs;
+        result.sign = sign == other.sign;
+        return result;
+    }
+
+    SignedInteger operator / (const SignedInteger& other) const {
+        SignedInteger result;
+        result.abs = abs / other.abs;
+        result.sign = sign == other.sign;
+        return result;
+    }
+
+    SignedInteger operator % (const SignedInteger& other) const {
+        SignedInteger result;
+        result.abs = abs % other.abs;
+        result.sign = sign;
+        return result;
+    }
 };
 
 #if defined(__GNUC__)
@@ -726,3 +823,5 @@ using BigInt = Integer<64, uint64_t, __uint128_t, __int128_t>;
 #else
 using BigInt = Integer<32, uint32_t, uint64_t, int64_t>;
 #endif
+
+using SignedBigInt = SignedInteger<BigInt>;
