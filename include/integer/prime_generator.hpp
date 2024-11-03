@@ -156,7 +156,6 @@ struct PrimeGenerator {
                     std::scoped_lock lock(result->lock);
                     result->found = true;
                     result->value = value;
-                    std::cout <<"found" << std::endl;
                     stop_source.request_stop();
                     break;
                 }
@@ -164,7 +163,7 @@ struct PrimeGenerator {
                 try_num++;
             }
             catch (std::exception& e) {
-                std::cerr << e.what();
+                spdlog::error(e.what());
             }
         }
     }
@@ -178,11 +177,9 @@ struct PrimeGenerator {
         if (small_primes.empty())
             small_primes = generate_primes(8192);
 
-        std::cout << small_primes.size() << std::endl;
-
         IntegerWithMutex result;
         uint32_t num_threads = std::thread::hardware_concurrency();
-        std::cout << num_threads << std::endl;
+        // spdlog::info("num_threads {}", num_threads);
         std::stop_source stop_source;
 
         std::vector<std::jthread> threads;

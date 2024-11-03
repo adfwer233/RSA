@@ -1,15 +1,9 @@
-project(RSADemo VERSION 1.0 DESCRIPTION "Graphics Lab Main Application" LANGUAGES CXX)
+project(rsa_py VERSION 1.0 DESCRIPTION "Graphics Lab Main Application" LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(SRC_FILE main.cpp)
-
-add_executable(${PROJECT_NAME} ${SRC_FILE})
-
+pybind11_add_module(${PROJECT_NAME} binding.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
-
-pybind11_add_module(rsa_py binding.cpp)
-target_include_directories(rsa_py PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Define the destination directory for the post-build copy
 set(DEST_DIR "${CMAKE_SOURCE_DIR}/demo")

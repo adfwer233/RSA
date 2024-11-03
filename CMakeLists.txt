@@ -17,8 +17,8 @@ find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 include(fetch-gtest)
 include(fetch-boost)
 include(fetch-pybind)
+include(fetch-benchmark)
 include(fetch-spdlog)
-
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${spdlog_SOURCE_DIR}/include)
 
@@ -28,6 +28,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     endif()
 endif()
 
-
+add_subdirectory(benchmark)
 add_subdirectory(src)
 add_subdirectory(test)

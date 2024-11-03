@@ -87,7 +87,6 @@ struct RSA {
         BigInt d = mod_inverse(e, phi);
         BigInt t = (e * d);
         BigInt t2 = t % phi;
-        std::cout << t2.to_string() << std::endl;
         public_key = {n, e};
         private_key = {p, q, n, d, phi};
         return {public_key, private_key};

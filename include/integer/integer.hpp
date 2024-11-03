@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include "spdlog/spdlog.h"
+
 /**
  * @brief large integer data structure
  *
@@ -641,7 +643,7 @@ private:
         }
 
         if (dividend.data[n - 1] == 0) {
-            std::cout << "wrong" << std::endl;
+            spdlog::warn("wrong");
         }
 
         for (int i = n - m - 1; i >= 0; i--) {
